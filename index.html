@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+    <head>
+     <meta charset="UTF-8">
+     <meta name="viewport"   content="width=device-width, height=device-height, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no"/>
+     <title>用户测试用例</title>
+     <link rel="stylesheet" href="https://g.alicdn.com/de/prismplayer/2.9.3/skins/default/aliplayer-min.css" />
+     <link href="https://vjs.zencdn.net/7.11.4/video-js.css" rel="stylesheet" />
+    <style>
+        body {
+            display: flex;
+        }
+        .video {
+            margin: 8px;
+        }
+    </style>
+    </head>
+    <body>
+        <div class="video">
+          <script charset="utf-8" type="text/javascript" src="https://g.alicdn.com/de/prismplayer/2.9.3/aliplayer-min.js"></script>
+           alivideo
+            <div  class="prism-player" id="J_prismPlayer"></div>
+            <script>
+                var player = new Aliplayer({
+                    id: 'J_prismPlayer',
+                    width: '600px',
+                    height: '450px',
+                    autoplay: false,
+                    controls: false,
+                    // skinLayout: true,
+                    preload:"auto",
+                    // source : 'https://d2zihajmogu5jn.cloudfront.net/sintel/master.m3u8',
+                    source : 'https://static.uskid.com/playback/20200523/qn5w3mn75/2_6gr4jM07dBixDv4D.m3u8',
+                });
+                </script>
+       </div>
+       <div class="video">
+        videojs
+        <video
+        id="my-video"
+        class="video-js"
+        controls
+        preload="auto"
+        width="600"
+        height="450"
+        poster="MY_VIDEO_POSTER.jpg"
+        data-setup="{}"
+      >
+        <!-- <source src=" https://d2zihajmogu5jn.cloudfront.net/sintel/master.m3u8" type="application/x-mpegURL" /> -->
+        <source src="https://static.uskid.com/playback/20210206/56i56psk7/2_vD8HMVsA4F8Rt8Z5.m3u8" type="application/x-mpegURL" />
+      </video>
+        <script src="https://vjs.zencdn.net/7.11.4/video.min.js"></script>
+
+    </div>
+        <div class="root" id="root"></div>
+    </body>
+</html>
