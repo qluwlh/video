@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import axios from "axios";
 import { of, defer, forkJoin } from "rxjs";
@@ -19,6 +19,14 @@ const testUrl =
   // "https://uskid.oss-cn-beijing.aliyuncs.com/playback/20200523/qn5w3mn75/2_6gr4jM07dBixDv4D.m3u8";
   // "https://uskid.oss-accelerate.aliyuncs.com/playback/20200523/qn5w3mn75/2_6gr4jM07dBixDv4D.m3u8";
   "https://static.uskid.com/playback/20200711/j3gdn354k/2_LTXKZ36xE7rhCZG9.m3u8";
+const mp4Urls = {
+  static:
+    "https://static.uskid.com/playback/20200523/qn5w3mn75/2_0_merge_av.mp4",
+  "oss-accelerate":
+    "https://uskid.oss-accelerate.aliyuncs.com/playback/20200523/qn5w3mn75/2_0_merge_av.mp4",
+  "oss-cn-beijing":
+    "https://uskid.oss-cn-beijing.aliyuncs.com/playback/20200523/qn5w3mn75/2_0_merge_av.mp4",
+};
 const host = testUrl.match(/(.*)\/.*.m3u8$/)?.[1] ?? "";
 const getM3U8$ = (url: string) =>
   defer(() => axios.get(url)).pipe(
@@ -42,32 +50,30 @@ const format = (m3u8File: any) => {
 };
 function App() {
   const [loaded, setLoaded] = useState(false);
-  const play = () => {
-    const video = document.getElementById("video") as HTMLVideoElement | null;
-    video?.play();
-  };
-  const pause = () => {
-    const video = document.getElementById("video") as HTMLVideoElement | null;
-    video?.pause();
-  };
-  const transmuxer = new muxjs.mp4.Transmuxer() as any;
-  const mediaSource = new MediaSource();
-  let sourceBuffer;
+  const play = () => videoRef.current?.play();
+  const pause = () => videoRef.current?.pause();
+  const transmuxer = useMemo(() => new muxjs.mp4.Transmuxer(), []);
+  const mediaSource = useMemo(() => new MediaSource(), []);
+  const sourceBufferRef = useRef<any>();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const tsUrlRef = useRef<string[]>([]);
   useEffect(() => {
-    const video = document.getElementById("video") as HTMLVideoElement;
-    video.src = URL.createObjectURL(mediaSource);
-    const tsURLs = [];
+    if (videoRef.current) {
+      videoRef.current.src = URL.createObjectURL(mediaSource);
+    }
     const updateend = () => {
       mediaSource.endOfStream();
-      video.play();
+      videoRef.current?.play();
       setLoaded(true);
     };
     const appendSegment = async () => {
-      if (tsURLs.length <= 0) {
+      if (tsUrlRef.current.length <= 0) {
         return;
       }
-      URL.revokeObjectURL(video.src);
-      sourceBuffer = mediaSource.addSourceBuffer(mime);
+      if (videoRef.current) {
+        URL.revokeObjectURL(videoRef.current.src);
+      }
+      sourceBufferRef.current = mediaSource.addSourceBuffer(mime);
       transmuxer.on("data", (segment) => {
         console.log(`transmuxer.on("data"`, segment);
         let data = new Uint8Array(
@@ -76,14 +82,14 @@ function App() {
         data.set(segment.initSegment, 0);
         data.set(segment.data, segment.initSegment.byteLength);
         console.log(muxjs.mp4.tools.inspect(data));
-        sourceBuffer.addEventListener("updateend", updateend);
-        sourceBuffer.appendBuffer(data);
+        sourceBufferRef.current.addEventListener("updateend", updateend);
+        sourceBufferRef.current.appendBuffer(data);
       });
     };
     mediaSource.addEventListener("sourceopen", appendSegment);
     const task = (m3u8File) => {
       const tss = format(m3u8File);
-      tsURLs.push(...tss);
+      tsUrlRef.current.push(...tss);
       const segments$ = of(tss).pipe(
         mergeMap((items) =>
           forkJoin(
@@ -104,6 +110,15 @@ function App() {
         complete: () => console.log("segments-done"),
       });
     };
+    // getTs$(mp4Urls["oss-accelerate"])
+    //   .pipe(map((item) => new Uint8Array(item)))
+    //   .subscribe({
+    //     next: (data) => {
+    //       console.log(`mp4-url`, data);
+    //       transmuxer.push(data);
+    //       transmuxer.flush();
+    //     },
+    //   });
     const data$ = getM3U8$(testUrl);
     data$.subscribe({
       next: task,
@@ -112,7 +127,15 @@ function App() {
   }, []);
   return (
     <div className="App">
-      <video id="video" width={400} height={300} className="video" controls />
+      {!loaded && "loading"}
+      <video
+        id="video"
+        width={400}
+        height={300}
+        className="video"
+        controls
+        ref={videoRef}
+      />
       {loaded && (
         <div>
           <button onClick={play}>播放</button>
