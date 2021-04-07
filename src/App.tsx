@@ -2,14 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import axios from "axios";
 import { of, defer, forkJoin } from "rxjs";
-import {
-  map,
-  tap,
-  retry,
-  catchError,
-  retryWhen,
-  mergeMap,
-} from "rxjs/operators";
+import { map, retry, catchError, retryWhen, mergeMap } from "rxjs/operators";
 const m3u8Parser = require("m3u8-parser");
 const muxjs = require("mux.js");
 
@@ -19,6 +12,8 @@ const testUrl =
   // "https://uskid.oss-cn-beijing.aliyuncs.com/playback/20200523/qn5w3mn75/2_6gr4jM07dBixDv4D.m3u8";
   // "https://uskid.oss-accelerate.aliyuncs.com/playback/20200523/qn5w3mn75/2_6gr4jM07dBixDv4D.m3u8";
   "https://static.uskid.com/playback/20200711/j3gdn354k/2_LTXKZ36xE7rhCZG9.m3u8";
+
+// eslint-disable-next-line
 const mp4Urls = {
   static:
     "https://static.uskid.com/playback/20200523/qn5w3mn75/2_0_merge_av.mp4",
@@ -124,6 +119,7 @@ function App() {
       next: task,
       complete: () => console.log("data-done"),
     });
+    // eslint-disable-next-line
   }, []);
   return (
     <div className="App">
