@@ -7,10 +7,6 @@ const m3u8Parser = require('m3u8-parser')
 const muxjs = require('mux.js')
 
 const mime = `video/mp4; codecs="mp4a.40.2,avc1.64001f"`
-const testUrl =
-  // "https://static.uskid.com/playback/20200523/qn5w3mn75/2_6gr4jM07dBixDv4D.m3u8";
-  // "https://uskid.oss-cn-beijing.aliyuncs.com/playback/20200523/qn5w3mn75/2_6gr4jM07dBixDv4D.m3u8";
-  'https://uskid.oss-accelerate.aliyuncs.com/playback/20200523/qn5w3mn75/2_6gr4jM07dBixDv4D.m3u8'
 
 const m3u8Urls = {
   static: 'https://static.uskid.com/playback/20200523/qn5w3mn75/2_6gr4jM07dBixDv4D.m3u8',
@@ -53,12 +49,12 @@ const getSegments$ = (tss) =>
     catchError((err) => of({ error: true, message: err.message }))
   )
 
-type M3u8UrlKeys = keyof typeof m3u8Urls
-type Mp4UrlKeys = keyof typeof mp4Urls
+type M3u8UrlKeys = keyof typeof m3u8Urls | ''
+type Mp4UrlKeys = keyof typeof mp4Urls | ''
 function App() {
   const [loaded, setLoaded] = useState(false)
-  const [m3u8, setM3u8] = useState<M3u8UrlKeys>('static')
-  const [mp4, setMp4] = useState<Mp4UrlKeys>('static')
+  const [m3u8, setM3u8] = useState<M3u8UrlKeys>('')
+  const [mp4, setMp4] = useState<Mp4UrlKeys>('')
   const play = () => videoRef.current?.play()
   const pause = () => videoRef.current?.pause()
   const transmuxer = useMemo(() => new muxjs.mp4.Transmuxer(), [])
@@ -127,23 +123,33 @@ function App() {
       <div>
         <div>
           <select name={m3u8} id={m3u8} onChange={(e) => setM3u8(e.target.value as M3u8UrlKeys)}>
+            <option key={''} value={''}>
+              选择
+            </option>
             {Object.entries(m3u8Urls).map(([key, value]) => (
               <option key={key} value={key}>
                 {value}
               </option>
             ))}
           </select>
-          <button onClick={getM3U8}>获取m3u8</button>
+          <button onClick={getM3U8} disabled={!m3u8}>
+            获取m3u8
+          </button>
         </div>
         <div>
           <select name={mp4} id={mp4} onChange={(e) => setMp4(e.target.value as Mp4UrlKeys)}>
+            <option key={''} value={''}>
+              选择
+            </option>
             {Object.entries(mp4Urls).map(([key, value]) => (
               <option key={key} value={key}>
                 {value}
               </option>
             ))}
           </select>
-          <button onClick={getMp4}>获取mp4</button>
+          <button onClick={getMp4} disabled={!mp4}>
+            获取mp4
+          </button>
         </div>
       </div>
       <div>
