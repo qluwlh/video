@@ -3,11 +3,10 @@ import './App.css'
 import axios from 'axios'
 import { of, defer, forkJoin } from 'rxjs'
 import { map, retry, catchError, retryWhen, mergeMap } from 'rxjs/operators'
+import Hls from 'hls.js'
 const m3u8Parser = require('m3u8-parser')
 const muxjs = require('mux.js')
-
 const mime = `video/mp4; codecs="mp4a.40.2,avc1.64001f"`
-
 const m3u8Urls = {
   static: 'https://static.uskid.com/playback/20200523/qn5w3mn75/2_6gr4jM07dBixDv4D.m3u8',
   'oss-accelerate':
@@ -17,6 +16,7 @@ const m3u8Urls = {
 }
 
 const mp4Urls = {
+  test: 'https://hq-static.oss-cn-beijing.aliyuncs.com/videoTest/fragmented.mp4',
   static: 'https://static.uskid.com/playback/20200523/qn5w3mn75/2_0_merge_av.mp4',
   'oss-accelerate':
     'https://uskid.oss-accelerate.aliyuncs.com/playback/20200523/qn5w3mn75/2_0_merge_av.mp4',
@@ -61,29 +61,29 @@ function App() {
   const mediaSource = useMemo(() => new MediaSource(), [])
   const sourceBufferRef = useRef<SourceBuffer>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const updateend = () => {
+    mediaSource.endOfStream()
+    videoRef.current?.play()
+    setLoaded(true)
+  }
+  const appendSegment = async () => {
+    if (videoRef.current) {
+      URL.revokeObjectURL(videoRef.current.src)
+    }
+    sourceBufferRef.current = mediaSource.addSourceBuffer(mime)
+    transmuxer.on('data', (segment) => {
+      console.log(`transmuxer.on("data"`, segment)
+      let data = new Uint8Array(segment.initSegment.byteLength + segment.data.byteLength)
+      data.set(segment.initSegment, 0)
+      data.set(segment.data, segment.initSegment.byteLength)
+      console.log(muxjs.mp4.tools.inspect(data))
+      sourceBufferRef.current.addEventListener('updateend', updateend)
+      sourceBufferRef.current.appendBuffer(data)
+    })
+  }
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.src = URL.createObjectURL(mediaSource)
-    }
-    const updateend = () => {
-      mediaSource.endOfStream()
-      videoRef.current?.play()
-      setLoaded(true)
-    }
-    const appendSegment = async () => {
-      if (videoRef.current) {
-        URL.revokeObjectURL(videoRef.current.src)
-      }
-      sourceBufferRef.current = mediaSource.addSourceBuffer(mime)
-      transmuxer.on('data', (segment) => {
-        console.log(`transmuxer.on("data"`, segment)
-        let data = new Uint8Array(segment.initSegment.byteLength + segment.data.byteLength)
-        data.set(segment.initSegment, 0)
-        data.set(segment.data, segment.initSegment.byteLength)
-        console.log(muxjs.mp4.tools.inspect(data))
-        sourceBufferRef.current.addEventListener('updateend', updateend)
-        sourceBufferRef.current.appendBuffer(data)
-      })
     }
     mediaSource.addEventListener('sourceopen', appendSegment)
   }, [])
@@ -104,8 +104,10 @@ function App() {
     getSegments$(format(m3u8File, host)).subscribe({
       next: (data) => {
         console.log(`segments$.subscribe-item`, data)
-        data.forEach((element) => transmuxer.push(element))
-        transmuxer.flush()
+        if (data?.length) {
+          data.forEach((element) => transmuxer.push(element))
+          transmuxer.flush()
+        }
       },
       error: console.log,
       complete: () => console.log('segments-done'),
@@ -118,9 +120,42 @@ function App() {
       complete: () => console.log('data-done'),
     })
   }
+  const onCanPlay = () => {}
+  const loadHls = () => {
+    const hls = new Hls({
+      maxBufferLength: 60 * 30,
+    })
+    hls.on(Hls.Events.MANIFEST_PARSED, function () {
+      setLoaded(true)
+      videoRef.current?.play()
+    })
+
+    hls.on(Hls.Events.ERROR, function (event, data) {
+      if (data.fatal) {
+        switch (data.type) {
+          case Hls.ErrorTypes.NETWORK_ERROR:
+            // try to recover network error
+            console.log('fatal network error encountered, try to recover')
+            hls.startLoad()
+            break
+          case Hls.ErrorTypes.MEDIA_ERROR:
+            console.log('fatal media error encountered, try to recover')
+            hls.recoverMediaError()
+            break
+          default:
+            // cannot recover
+            hls.destroy()
+            break
+        }
+      }
+    })
+    hls.loadSource(m3u8Urls[m3u8])
+    hls.attachMedia(videoRef.current)
+  }
   return (
     <div className={'root'}>
       <div>
+        <button onClick={loadHls}>边播放边预加载</button>
         <div>
           <select name={m3u8} id={m3u8} onChange={(e) => setM3u8(e.target.value as M3u8UrlKeys)}>
             <option key={''} value={''}>
@@ -153,7 +188,15 @@ function App() {
         </div>
       </div>
       <div>
-        <video id="video" width={400} height={300} className="video" controls ref={videoRef} />
+        <video
+          id="video"
+          width={400}
+          height={300}
+          className="video"
+          controls
+          ref={videoRef}
+          onCanPlay={onCanPlay}
+        />
       </div>
 
       {loaded && (
