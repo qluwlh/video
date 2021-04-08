@@ -155,7 +155,7 @@ function App() {
   return (
     <div className={'root'}>
       <div>
-        <button onClick={loadHls}>边播放边预加载</button>
+        <button onClick={loadHls}>边播放边预加载m3u8</button>
         <div>
           <select name={m3u8} id={m3u8} onChange={(e) => setM3u8(e.target.value as M3u8UrlKeys)}>
             <option key={''} value={''}>
